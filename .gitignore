@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+# Secrets and local databases
+.env
+*.db
+*.sqlite
+# Local uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+node_modules

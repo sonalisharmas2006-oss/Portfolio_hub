@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { Home, FolderKanban, Trophy, FileText, Send } from "lucide-react";
+export default function MacDock(){return <nav className="mac-dock" aria-label="Main navigation"><Link className="dock-brand" href="/#top" aria-label="Sonali home"><img src="/assets/brand/sunflower-logo.jpg" alt="Sunflower logo"/></Link><Link href="/#top" aria-label="Home"><Home/><small>Home</small></Link><Link href="/#work" aria-label="Projects"><FolderKanban/><small>Projects</small></Link><Link href="/#achievements" aria-label="Achievements"><Trophy/><small>Awards</small></Link><Link href="/resume" aria-label="Resume"><FileText/><small>Resume</small></Link><Link href="/contact" aria-label="Contact"><Send/><small>Contact</small></Link></nav>}

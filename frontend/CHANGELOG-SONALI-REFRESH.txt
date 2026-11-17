@@ -1,0 +1,19 @@
+SONALI PORTFOLIO FRONTEND REFRESH
+
+Changes:
+- Moved resume to /resume with view and download actions.
+- Moved contact form and direct email link to /contact.
+- Removed the top navigation and added a floating macOS-style icon dock across public pages.
+- Added a Pinterest-inspired poster/card layout for projects.
+- Added the supplied crumpled-paper background.
+- Set all text to upright/non-italic styling.
+- Added the RushKIDDOS 1.0 team photograph as a second achievement slide.
+- Added the supplied sun favicon and sunflower logo.
+
+Run locally:
+1. Open the frontend folder in VS Code.
+2. Run: npm install
+3. Copy .env.local.example to .env.local and set NEXT_PUBLIC_API_BASE_URL to your backend URL.
+4. Run: npm run dev
+
+The frontend expects the existing FastAPI backend API. This bundle contains frontend files only.

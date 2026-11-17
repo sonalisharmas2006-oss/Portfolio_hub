@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500;600&family=Caveat:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-main: #E8D5BD;
+  --bg-light: #F3E5D3;
+  --bg-warm: #D7BFA5;
+  --espresso: #382316;
+  --coffee: #563A29;
+  --muted-rose: #C99186;
+  --sage: #87927A;
+  --dusty-blue: #8999A8;
+  --cream: #FAF1E6;
+  --gold: #C4954A;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg-main);
+  color: var(--espresso);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Paper grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.font-serif { font-family: 'Cormorant Garamond', serif; }
+.font-display { font-family: 'Playfair Display', serif; }
+.font-sans { font-family: 'DM Sans', sans-serif; }
+.font-handwritten { font-family: 'Caveat', cursive; }
+
+/* Torn paper edges */
+.torn-top {
+  position: relative;
+}
+.torn-top::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: var(--bg-main);
+  clip-path: polygon(0% 100%, 2% 0%, 5% 70%, 8% 10%, 12% 60%, 15% 0%, 19% 80%, 23% 20%, 27% 90%, 31% 5%, 35% 65%, 39% 15%, 43% 75%, 47% 0%, 51% 85%, 55% 10%, 59% 70%, 63% 0%, 67% 60%, 71% 25%, 75% 85%, 79% 5%, 83% 55%, 87% 20%, 91% 80%, 95% 0%, 98% 50%, 100% 100%);
+  z-index: 1;
+}
+
+/* Polaroid frame */
+.polaroid {
+  background: white;
+  padding: 12px 12px 32px;
+  box-shadow: 2px 4px 12px rgba(56,35,22,0.2);
+  transform: rotate(-2deg);
+}
+
+/* Vintage stamp */
+.stamp {
+  border: 3px solid var(--espresso);
+  padding: 4px 8px;
+  display: inline-block;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  position: relative;
+}
+
+/* Paper clip */
+.paper-clip::before {
+  content: '';
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 32px;
+  border: 3px solid #888;
+  border-radius: 10px 10px 0 0;
+  border-bottom: none;
+  background: transparent;
+}
+
+/* Vintage card */
+.vintage-card {
+  background: var(--bg-light);
+  border: 1px solid rgba(86,58,41,0.15);
+  box-shadow: 3px 5px 20px rgba(56,35,22,0.12), inset 0 0 60px rgba(232,213,189,0.3);
+  position: relative;
+}
+
+/* Wax seal effect */
+.wax-seal {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--muted-rose), #9e5a50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3);
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  color: white;
+  font-size: 14px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-warm); }
+::-webkit-scrollbar-thumb { background: var(--coffee); border-radius: 4px; }
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--muted-rose);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Smooth section transitions */
+section { position: relative; z-index: 1; }
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-warm) 25%, var(--bg-light) 50%, var(--bg-warm) 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
