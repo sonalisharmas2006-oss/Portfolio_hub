@@ -15,8 +15,16 @@ from .seed import seed_initial_content
 
 COLLECTIONS = {"profile","education","experience","skills","projects","achievements","certificates","social-links","site-settings","resume"}
 app = FastAPI(title=settings.app_name, version="1.0.0", description="Portfolio content and administration API")
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True,
-                   allow_methods=["GET","POST","PUT","PATCH","DELETE"], allow_headers=["Content-Type","X-CSRF-Token"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(set(
+        settings.cors_origin_list
+        + ["https://portfolio-hub-psi-beige.vercel.app"]
+    )),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 upload_path = settings.upload_path
 app.mount("/uploads", StaticFiles(directory=str(upload_path)), name="uploads")
 
