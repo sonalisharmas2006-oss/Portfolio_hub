@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import MacDock from "@/components/mac-dock";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://127.0.0.1:3000";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portfolio-hub-psi-beige.vercel.app";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "Sonali Sharma | Developer & AI/ML Student", template: "%s | Sonali Sharma" },
