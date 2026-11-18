@@ -1,5 +1,5 @@
-
 import type { Metadata } from "next";
+import ResumeViewer from "@/components/resume-viewer";
 
 const resumeUrl = "/Sonali_Sharma_Job_Profile_Resume.pdf";
 
@@ -47,26 +47,7 @@ export default function ResumePage() {
           Download Resume ↓
         </a>
 
-        <div
-          style={{
-            width: "100%",
-            height: "min(78vh, 950px)",
-            minHeight: "550px",
-            overflow: "hidden",
-            borderRadius: "16px",
-            border: "1px solid rgba(73,48,31,.2)",
-            background: "#fff",
-            boxShadow: "0 15px 45px rgba(73,48,31,.12)",
-          }}
-        >
-          <iframe
-            src={resumeUrl}
-            title="Sonali Sharma Resume"
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-          />
-        </div>
+        <ResumeViewer resumeUrl={resumeUrl} />
       </div>
     </main>
   );
