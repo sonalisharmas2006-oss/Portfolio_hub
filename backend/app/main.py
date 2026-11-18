@@ -1,6 +1,7 @@
 from pathlib import Path
 import re, mimetypes
 import httpx
+import os
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -163,6 +164,33 @@ async def contact(payload: ContactInput, request: Request, db: Session = Depends
     msg = ContactMessage(name=payload.name.strip(), email=str(payload.email),
         subject=payload.subject.strip(), message=payload.message.strip())
     db.add(msg); db.commit(); db.refresh(msg)
+    google_script_url = os.getenv("GOOGLE_SCRIPT_URL", "").strip()
+    google_script_secret = os.getenv("GOOGLE_SCRIPT_SECRET", "").strip()
+    if google_script_url and google_script_secret:
+        try:
+            async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+                result = await client.post(
+                    google_script_url,
+                    json={
+                        "token": google_script_secret,
+                        "name": payload.name.strip(),
+                        "email": str(payload.email),
+                        "subject": payload.subject.strip(),
+                        "message": payload.message.strip(),
+                    },
+                )
+                result.raise_for_status()
+                response_data = result.json()
+                if not response_data.get("success"):
+                    raise RuntimeError(response_data.get("error", "Google mailer rejected the message"))
+            msg.email_status = "sent"; db.commit()
+            return {"accepted":True,"email_status":"sent"}
+        except Exception:
+            msg.email_status = "failed"; db.commit()
+            return {"accepted":True,"email_status":"failed",
+                    "message":"Message saved, but email delivery failed. Please try again later."}
+
+    # Optional Resend fallback for deployments that already have it configured.
     if settings.resend_api_key and settings.resend_from_email:
         try:
             async with httpx.AsyncClient(timeout=12) as client:
@@ -172,22 +200,13 @@ async def contact(payload: ContactInput, request: Request, db: Session = Depends
                         "from": settings.resend_from_email,
                         "to": [settings.contact_to_email],
                         "reply_to": f"{payload.name.strip()} <{str(payload.email)}>",
-                        # Preserve exactly the subject entered in the website form.
                         "subject": payload.subject.strip(),
                         "text": (
-                            f"Name: {payload.name.strip()}\n"
-                            f"Email: {str(payload.email)}\n"
-                            f"Subject: {payload.subject.strip()}\n\n"
-                            "Message:\n"
-                            f"{payload.message.strip()}\n"
-                        ),
-                        "html": (
-                            "<h2>New portfolio contact message</h2>"
-                            f"<p><strong>Name:</strong> {payload.name.strip()}</p>"
-                            f"<p><strong>Email:</strong> {str(payload.email)}</p>"
-                            f"<p><strong>Subject:</strong> {payload.subject.strip()}</p>"
-                            "<p><strong>Message:</strong></p>"
-                            f"<p>{payload.message.strip().replace(chr(10), '<br>')}</p>"
+                            f"Name: {payload.name.strip()}\\n"
+                            f"Email: {str(payload.email)}\\n"
+                            f"Subject: {payload.subject.strip()}\\n\\n"
+                            "Message:\\n"
+                            f"{payload.message.strip()}\\n"
                         ),
                     })
                 result.raise_for_status()
@@ -195,6 +214,6 @@ async def contact(payload: ContactInput, request: Request, db: Session = Depends
             return {"accepted":True,"email_status":"sent"}
         except Exception:
             msg.email_status = "failed"; db.commit()
-            return {"accepted":True,"email_status":"failed","message":"Message saved, but email delivery failed. Please use the direct email link."}
+            return {"accepted":True,"email_status":"failed","message":"Message saved, but email delivery failed."}
     return {"accepted":True,"email_status":"not_configured",
-            "message":"Message saved. Email delivery is not configured yet; configure Resend before production."}
+            "message":"Message saved. Configure the free Google Apps Script mailer to enable email delivery."}
