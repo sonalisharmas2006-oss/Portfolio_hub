@@ -80,9 +80,13 @@ def admin_login(payload: LoginInput, response: Response, db: Session = Depends(g
     user = db.scalar(select(AdminUser).where(AdminUser.username == payload.username))
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Invalid username or password")
+    # Frontend (Vercel) and API (Render) are cross-site in production.
+    # Cross-site session cookies must use SameSite=None and Secure.
+    is_production = settings.app_env.lower() == "production"
     response.set_cookie(COOKIE_NAME, make_session(user.username), httponly=True,
-        secure=settings.cookie_secure, samesite="lax", max_age=settings.session_max_age_seconds,
-        path="/")
+        secure=(settings.cookie_secure or is_production),
+        samesite=("none" if is_production else "lax"),
+        max_age=settings.session_max_age_seconds, path="/")
     return {"authenticated":True,"username":user.username}
 
 @app.post(settings.api_v1_prefix + "/admin/logout")
