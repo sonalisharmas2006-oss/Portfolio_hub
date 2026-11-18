@@ -105,4 +105,11 @@ def seed_initial_content(db: Session):
             data={"label": label, "platform": label.lower(), "url": url},
             is_published=True, sort_order=i)
 
+    _ensure_item(db, "site-settings", "portfolio-defaults",
+        title="Portfolio site settings",
+        data={"site_title": "Sonali Sharma | Portfolio",
+              "site_description": "Portfolio of Sonali Sharma — Computer Science student, developer and AI/ML enthusiast.",
+              "canonical_domain": "https://portfolio-hub-psi-beige.vercel.app"},
+        is_published=True, sort_order=0)
+
     db.commit()
