@@ -168,9 +168,28 @@ async def contact(payload: ContactInput, request: Request, db: Session = Depends
             async with httpx.AsyncClient(timeout=12) as client:
                 result = await client.post("https://api.resend.com/emails",
                     headers={"Authorization":f"Bearer {settings.resend_api_key}"},
-                    json={"from":settings.resend_from_email,"to":[settings.contact_to_email],
-                          "reply_to":str(payload.email),"subject":f"Portfolio contact: {payload.subject}",
-                          "text":f"From: {payload.name} <{payload.email}>\n\n{payload.message}"})
+                    json={
+                        "from": settings.resend_from_email,
+                        "to": [settings.contact_to_email],
+                        "reply_to": f"{payload.name.strip()} <{str(payload.email)}>",
+                        # Preserve exactly the subject entered in the website form.
+                        "subject": payload.subject.strip(),
+                        "text": (
+                            f"Name: {payload.name.strip()}\n"
+                            f"Email: {str(payload.email)}\n"
+                            f"Subject: {payload.subject.strip()}\n\n"
+                            "Message:\n"
+                            f"{payload.message.strip()}\n"
+                        ),
+                        "html": (
+                            "<h2>New portfolio contact message</h2>"
+                            f"<p><strong>Name:</strong> {payload.name.strip()}</p>"
+                            f"<p><strong>Email:</strong> {str(payload.email)}</p>"
+                            f"<p><strong>Subject:</strong> {payload.subject.strip()}</p>"
+                            "<p><strong>Message:</strong></p>"
+                            f"<p>{payload.message.strip().replace(chr(10), '<br>')}</p>"
+                        ),
+                    })
                 result.raise_for_status()
             msg.email_status = "sent"; db.commit()
             return {"accepted":True,"email_status":"sent"}
