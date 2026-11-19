@@ -603,6 +603,8 @@ export default function PortfolioHome({
               width={640}
               height={960}
               priority
+              loading="eager"
+              fetchPriority="high"
               unoptimized
             />
             <span>sonali, in her element ♡</span>
@@ -914,6 +916,7 @@ export default function PortfolioHome({
               alt="Sonali and her team celebrating their hackathon award"
               width={900}
               height={600}
+              loading="lazy"
               unoptimized
             />
             <span className="photo-caption">
