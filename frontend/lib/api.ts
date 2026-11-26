@@ -127,9 +127,7 @@ async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
         }
       }
       if (!response.ok) throw httpError(response.status, body);
-      if (body === null && method !== "DELETE") {
-        throw new ApiError("Backend returned an empty or invalid JSON response.", response.status);
-      }
+      // JSON `null` is a valid response for empty profile/resume collections.
       return body as T;
     } catch (error) {
       lastError = normalizeError(error);
