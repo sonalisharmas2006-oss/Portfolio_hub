@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     storage_backend: str = "local"
     supabase_url: str = ""
     supabase_service_role_key: str = ""
-    supabase_storage_bucket: str = "portfolio-uploads"
+    supabase_storage_bucket: str = "portfolio-assets"
     resend_api_key: str = ""
     contact_to_email: str = "sonalisharma.s2006@gmail.com"
     resend_from_email: str = ""
