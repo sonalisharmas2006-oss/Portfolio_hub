@@ -1,6 +1,7 @@
 # API Contract v1
 
-Base URL (local): `http://localhost:8000/api/v1`
+Base URL (local): `http://127.0.0.1:8000/api/v1`
+Base URL (production): `https://sonali-portfolio-api.onrender.com/api/v1`
 
 All responses are JSON unless a file is being served. Public endpoints return published content only. Admin endpoints require the signed `portfolio_admin_session` HttpOnly cookie from `POST /admin/login`.
 
@@ -23,8 +24,13 @@ A profile/resume collection returns the first published item or null. Other coll
 - `GET /admin/{collection}` — all records, including drafts.
 - `POST /admin/{collection}` — create record.
 - `PUT /admin/{collection}/{id}` — replace record fields.
+- `PATCH /admin/{collection}/{id}` — partially update record fields.
 - `DELETE /admin/{collection}/{id}` — delete record.
 - `POST /admin/upload` multipart field `file`; allowed extensions PDF, PNG, JPG, JPEG, WEBP; size controlled by `MAX_UPLOAD_MB`.
+  - Returns `{filename, original_filename, url, size, storage}`.
+  - `url` is a public URL. In production, `storage` is `supabase` and the file is stored in the configured public bucket.
+  - Invalid extension or content signature returns 415; oversized files return 413.
+  - Missing storage configuration returns 503; provider failures return 502. Uploads are never reported as successful when nothing was persisted.
 
 Content record shape:
 ```json

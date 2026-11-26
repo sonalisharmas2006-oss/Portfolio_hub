@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import ResumeViewer from "@/components/resume-viewer";
+import { getPublicCollection, resolveAssetUrl } from "@/lib/api";
 
-const resumeUrl = "/Sonali_Sharma_Job_Profile_Resume.pdf";
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Resume",
   description: "View and download Sonali Sharma's resume.",
 };
 
-export default function ResumePage() {
+export default async function ResumePage() {
+  const resume = (await getPublicCollection("resume"))[0];
+  const resumeUrl = resolveAssetUrl(resume?.data?.file_url || resume?.data?.resume_url)
+    || "/Sonali_Sharma_Job_Profile_Resume.pdf";
+
   return (
     <main
       style={{

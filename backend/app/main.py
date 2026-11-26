@@ -1,5 +1,5 @@
 from pathlib import Path
-import re, mimetypes
+import re, mimetypes, warnings, uuid
 import httpx
 import os
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, UploadFile, File
@@ -10,29 +10,38 @@ from sqlalchemy import select
 from .config import settings
 from .database import Base, engine, get_db
 from .models import ContentItem, AdminUser, ContactMessage
-from .schemas import LoginInput, ContentInput, ContactInput
+from .schemas import LoginInput, ContentInput, ContentPatchInput, ContactInput
 from .security import COOKIE_NAME, hash_password, verify_password, make_session, require_admin
 from .seed import seed_initial_content
+from .storage import StorageConfigurationError, StorageUploadError, persist_upload
 
 COLLECTIONS = {"profile","education","experience","skills","projects","achievements","certificates","social-links","site-settings","resume"}
 app = FastAPI(title=settings.app_name, version="1.0.0", description="Portfolio content and administration API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(set(
-        settings.cors_origin_list
-        + ["https://portfolio-hub-psi-beige.vercel.app"]
-    )),
+    allow_origins=list(dict.fromkeys([
+        *settings.cors_origin_list,
+        "https://portfolio-hub-psi-beige.vercel.app",
+    ])),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Authorization", "Content-Type", "Origin", "X-Requested-With"],
+    expose_headers=["Content-Type"],
 )
 upload_path = settings.upload_path
 app.mount("/uploads", StaticFiles(directory=str(upload_path)), name="uploads")
 
 @app.on_event("startup")
 def startup():
-    if settings.app_env == "production" and (len(settings.secret_key) < 32 or not settings.admin_password):
+    if settings.is_production and (len(settings.secret_key) < 32 or not settings.admin_password):
         raise RuntimeError("Production requires SECRET_KEY (32+ chars) and ADMIN_PASSWORD.")
+    if not settings.storage_ready:
+        warnings.warn(
+            "Uploads are disabled until persistent storage is configured. "
+            "Set STORAGE_BACKEND=supabase, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY "
+            "and SUPABASE_STORAGE_BUCKET.",
+            RuntimeWarning,
+        )
     Base.metadata.create_all(bind=engine)
     from .database import SessionLocal
     db = SessionLocal()
@@ -92,12 +101,56 @@ def admin_login(payload: LoginInput, response: Response, db: Session = Depends(g
 
 @app.post(settings.api_v1_prefix + "/admin/logout")
 def admin_logout(response: Response, _: str = Depends(require_admin)):
-    response.delete_cookie(COOKIE_NAME, path="/")
+    response.delete_cookie(
+        COOKIE_NAME,
+        path="/",
+        secure=(settings.cookie_secure or settings.is_production),
+        samesite=("none" if settings.is_production else "lax"),
+    )
     return {"authenticated":False}
 
 @app.get(settings.api_v1_prefix + "/admin/me")
 def admin_me(username: str = Depends(require_admin)):
     return {"authenticated":True,"username":username}
+
+# This route must be registered before /admin/{collection}: otherwise FastAPI
+# matches "upload" as a collection and the CRUD handler shadowed file uploads.
+@app.post(settings.api_v1_prefix + "/admin/upload", status_code=201)
+async def admin_upload(file: UploadFile = File(...), _: str = Depends(require_admin)):
+    allowed = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in allowed:
+        raise HTTPException(415, "Invalid file type. Only PDF, PNG, JPG and WEBP files are allowed.")
+
+    limit = settings.max_upload_mb * 1024 * 1024
+    content = await file.read(limit + 1)
+    if len(content) > limit:
+        raise HTTPException(413, f"File too large. The limit is {settings.max_upload_mb} MB.")
+
+    signatures = {
+        ".pdf": content.startswith(b"%PDF"),
+        ".png": content.startswith(b"\x89PNG\r\n\x1a\n"),
+        ".jpg": content.startswith(b"\xff\xd8\xff"),
+        ".jpeg": content.startswith(b"\xff\xd8\xff"),
+        ".webp": content.startswith(b"RIFF") and content[8:12] == b"WEBP",
+    }
+    if not signatures.get(suffix, False):
+        raise HTTPException(415, "Invalid file content. File signature does not match its extension.")
+
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "-", Path(file.filename or "upload").name)[:100]
+    if not safe_name or safe_name in {".", ".."}:
+        safe_name = f"upload{suffix}"
+    stored = f"{uuid.uuid4().hex}-{safe_name}"[:180]
+    content_type = file.content_type or mimetypes.guess_type(stored)[0] or "application/octet-stream"
+
+    try:
+        result = await persist_upload(stored, content, content_type)
+    except StorageConfigurationError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except StorageUploadError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+    return {"original_filename": file.filename, **result}
 
 @app.get(settings.api_v1_prefix + "/admin/{collection}")
 def admin_list(collection: str, db: Session = Depends(get_db), _: str = Depends(require_admin)):
@@ -129,6 +182,21 @@ def admin_update(collection: str, item_id: int, payload: ContentInput, db: Sessi
     db.commit(); db.refresh(row)
     return item_out(row)
 
+@app.patch(settings.api_v1_prefix + "/admin/{collection}/{item_id}")
+def admin_patch(collection: str, item_id: int, payload: ContentPatchInput, db: Session = Depends(get_db),
+                _: str = Depends(require_admin)):
+    valid_collection(collection)
+    row = db.get(ContentItem, item_id)
+    if not row or row.collection != collection: raise HTTPException(404, "Content not found")
+    changes = payload.model_dump(exclude_unset=True)
+    if "slug" in changes:
+        conflict = db.scalar(select(ContentItem).where(ContentItem.collection==collection,
+            ContentItem.slug==changes["slug"], ContentItem.id != item_id))
+        if conflict: raise HTTPException(409, "Slug already in use")
+    for key, value in changes.items(): setattr(row, key, value)
+    db.commit(); db.refresh(row)
+    return item_out(row)
+
 @app.delete(settings.api_v1_prefix + "/admin/{collection}/{item_id}")
 def admin_delete(collection: str, item_id: int, db: Session = Depends(get_db),
                  _: str = Depends(require_admin)):
@@ -137,26 +205,6 @@ def admin_delete(collection: str, item_id: int, db: Session = Depends(get_db),
     if not row or row.collection != collection: raise HTTPException(404, "Content not found")
     db.delete(row); db.commit()
     return {"deleted":True,"id":item_id}
-
-@app.post(settings.api_v1_prefix + "/admin/upload", status_code=201)
-async def admin_upload(file: UploadFile = File(...), _: str = Depends(require_admin)):
-    allowed = {".pdf",".png",".jpg",".jpeg",".webp"}
-    suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in allowed: raise HTTPException(415, "Only PDF, PNG, JPG and WEBP files are allowed")
-    content = await file.read(settings.max_upload_mb * 1024 * 1024 + 1)
-    if len(content) > settings.max_upload_mb * 1024 * 1024:
-        raise HTTPException(413, "File exceeds upload size limit")
-    # Verify signatures for common formats rather than trusting browser MIME headers.
-    signatures = {".pdf": content.startswith(b"%PDF"), ".png": content.startswith(b"\x89PNG\r\n\x1a\n"),
-                  ".jpg": content.startswith(b"\xff\xd8\xff"), ".jpeg": content.startswith(b"\xff\xd8\xff"),
-                  ".webp": content.startswith(b"RIFF") and content[8:12] == b"WEBP"}
-    if not signatures.get(suffix, False): raise HTTPException(415, "File content does not match its extension")
-    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "-", Path(file.filename).name)[:100]
-    import uuid
-    stored = f"{uuid.uuid4().hex}-{safe_name}"
-    (upload_path / stored).write_bytes(content)
-    return {"filename":stored,"original_filename":file.filename,
-            "url":f"{settings.public_base_url.rstrip('/')}/uploads/{stored}","size":len(content)}
 
 @app.post(settings.api_v1_prefix + "/contact", status_code=202)
 async def contact(payload: ContactInput, request: Request, db: Session = Depends(get_db)):

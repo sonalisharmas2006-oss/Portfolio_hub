@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- content JSON is schema-free and defined per collection */
 export interface ContentItem {
   id:number; collection:string; slug:string; title:string; data:Record<string, any>;
   is_published:boolean; is_featured:boolean; sort_order:number; created_at:string; updated_at:string;

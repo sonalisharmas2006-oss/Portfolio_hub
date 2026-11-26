@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any -- portfolio content fields are arbitrary JSON from the API */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, CSSProperties, PointerEvent } from "react";
