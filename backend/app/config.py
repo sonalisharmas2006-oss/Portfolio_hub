@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     database_url: str = "sqlite:///./portfolio.db"
     secret_key: str = "development-only-change-me"
-    admin_username: str = "sonali"
+    admin_username: str = "Sonali"
     admin_password: str = ""
     session_max_age_seconds: int = 28800
     cookie_secure: bool = False
